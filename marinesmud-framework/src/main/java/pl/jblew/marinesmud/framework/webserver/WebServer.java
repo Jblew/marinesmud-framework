@@ -6,6 +6,9 @@
 package pl.jblew.marinesmud.framework.webserver;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import pl.jblew.marinesmud.framework.webserver.websockets.WebSocketFrameHandler;
 
 /**
  *
@@ -15,22 +18,31 @@ public class WebServer {
     private final WebServerConfig config;
     private final RoutingHttpResponder router;
     private final StaticFileLoader fileLoader;
+    private final WebSocketFrameHandler wsFrameHandler;
     
     private final AtomicReference<HttpRedirectingServer> httpServer = new AtomicReference<>(null);
     private final AtomicReference<HttpsServer> httpsServer = new AtomicReference<>(null);
     private final Object sync = new Object();
     
     public WebServer(WebServerConfig config, RoutingHttpResponder router, StaticFileLoader fileLoader) {
+        this(config, router, fileLoader, null);
+    }
+    
+    
+    public WebServer(WebServerConfig config, RoutingHttpResponder router, StaticFileLoader fileLoader, WebSocketFrameHandler wsFrameHandler) {
         this.config = config;
         this.router = router;
         this.fileLoader = fileLoader;
+        this.wsFrameHandler = wsFrameHandler;
+        
+        Logger.getLogger("io.netty").setLevel(Level.SEVERE);
     }
     
     public void start() {
         synchronized(sync) {
             if(httpServer.get() != null || httpsServer.get() != null) throw new RuntimeException("WebServer already started");
             httpServer.set(new HttpRedirectingServer(config));
-            httpsServer.set(new HttpsServer(config, router, fileLoader));
+            httpsServer.set(new HttpsServer(config, router, fileLoader, wsFrameHandler));
         }
     }
     

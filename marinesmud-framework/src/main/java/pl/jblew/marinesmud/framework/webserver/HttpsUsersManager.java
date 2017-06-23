@@ -19,17 +19,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import pl.jblew.marinesmud.framework.crypto.CryptoUtils;
+import pl.jblew.marinesmud.framework.util.TwoTuple;
 
 /**
  *
  * @author teofil
  */
 public class HttpsUsersManager {
+    private static final long SESSION_CLEANUP_INTERVAL_MS = 60 * 1000;
     private final Object sync = new Object();
-    private final Map<String, HttpsUser> users = new HashMap<>();
-    private final Map<String, HttpsUser> wsChannels = new HashMap<>();
+    private final Map<String, HttpsSession> sessions = new HashMap<>();
     private final WebServerConfig config;
     private final String cookieName;
+    private long lastCleanupTimestamp = System.currentTimeMillis();
 
     public HttpsUsersManager(WebServerConfig config) {
         this.config = config;
@@ -40,16 +42,19 @@ public class HttpsUsersManager {
         }
     }
 
-    public HttpsUser parseCookies(String cookieHeader, HttpHeaders headersObj) {
+    public TwoTuple<HttpsSession, Cookie> parseCookies(String cookieHeader) {
+        cleanup();
+
         Cookie cookie = null;
         if (cookieHeader != null) {
-            Set<Cookie> cookies = ServerCookieDecoder.STRICT.decode(cookieHeader);
+            Set<Cookie> cookies = ServerCookieDecoder.LAX.decode(cookieHeader);
             for (Cookie c : cookies) {
-                if (c.name() != null) {
-                    //System.out.println("Cookie: {name=" + c.name() + "; domain=" + c.domain() + "}");
-                    if (c.name().equals(cookieName) && (c.domain() == null || c.domain().equals(config.domain)) && c.isHttpOnly() && c.isSecure()) {
-                        cookie = c;
-                        break;
+                if (c.name() != null && c.name().equals(cookieName)) {
+                    if ((c.domain() == null || c.domain().equals(config.domain))) {
+                        if (sessions.containsKey(c.value())) {
+                            cookie = c;
+                            break;
+                        }
                     }
                 }
             }
@@ -57,26 +62,38 @@ public class HttpsUsersManager {
 
         synchronized (sync) {
             String cookieValue = "";
-            HttpsUser user;
-            if (cookie != null && users.containsKey(cookie.value())) {
+            HttpsSession session;
+            if (cookie != null && sessions.containsKey(cookie.value())) {
                 cookieValue = cookie.value();
-                user = users.get(cookieValue);
+                session = sessions.get(cookieValue);
             } else {
-                cookieValue = CryptoUtils.getRandomString();
-                user = new HttpsUser();
-                users.put(cookieValue, user);
+                cookieValue = CryptoUtils.getRandomString() + "" + System.currentTimeMillis();
+                session = new HttpsSession();
+                sessions.put(cookieValue, session);
             }
-            user.touch();
+            session.touch();
 
             Cookie newCookie = new DefaultCookie(cookieName, cookieValue);
             newCookie.setDomain(config.domain);
             newCookie.setHttpOnly(true);
             newCookie.setMaxAge(config.cookiesTimeousS);
             newCookie.setSecure(true);
-            headersObj.add(SET_COOKIE, ServerCookieEncoder.STRICT.encode(newCookie));
 
-            return user;
+            return new TwoTuple<>(session, newCookie);
         }
+    }
 
+    private void cleanup() {
+        synchronized (sync) {
+            if (System.currentTimeMillis() - this.lastCleanupTimestamp > SESSION_CLEANUP_INTERVAL_MS) {
+                for (String key : sessions.keySet()) {
+                    HttpsSession session = sessions.get(key);
+                    if (System.currentTimeMillis() - session.getLastSeen() > config.cookiesTimeousS * 1000) {
+                        sessions.remove(key);
+                    }
+                }
+                this.lastCleanupTimestamp = System.currentTimeMillis();
+            }
+        }
     }
 }

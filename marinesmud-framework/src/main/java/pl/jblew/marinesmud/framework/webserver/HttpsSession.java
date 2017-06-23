@@ -9,19 +9,24 @@ import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
 import java.util.HashMap;
 import java.util.Map;
+import pl.jblew.marinesmud.framework.mod.io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 
 /**
  *
  * @author teofil
  */
-public final class HttpsUser {
-    public static final AttributeKey<HttpsUser> WSCHANNEL_USER_ATTR = AttributeKey.valueOf("httpsuser");
+public final class HttpsSession {
+    public static final AttributeKey<HttpsSession> WSCHANNEL_SESSION_ATTR = AttributeKey.valueOf("httpssession");
 
     private final Map<String, Object> properties = new HashMap<>();
     private final Object sync = new Object();
     private Channel webSocketChannel = null;
     private long lastSeen = System.currentTimeMillis();
 
+    public HttpsSession() {
+        
+    }
+    
     public Channel getWebSocketChannel() {
         synchronized (sync) {
             return webSocketChannel;
@@ -29,7 +34,7 @@ public final class HttpsUser {
     }
 
     public void setWebSocketChannel(Channel webSocketChannel) {
-        webSocketChannel.attr(WSCHANNEL_USER_ATTR).set(this);
+        webSocketChannel.attr(WSCHANNEL_SESSION_ATTR).set(this);
         synchronized (sync) {
             this.webSocketChannel = webSocketChannel;
         }
@@ -59,4 +64,8 @@ public final class HttpsUser {
         }
     }
 
+    public void sendToWebSocket(String text) {
+        Channel channel = this.getWebSocketChannel();
+        channel.writeAndFlush(new TextWebSocketFrame(text));
+    }
 }

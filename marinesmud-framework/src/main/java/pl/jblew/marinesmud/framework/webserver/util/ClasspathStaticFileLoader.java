@@ -53,9 +53,7 @@ public class ClasspathStaticFileLoader implements StaticFileLoader {
 
     @Override
     public String getMime(Path path) {
-        System.out.println("loading "+path+" in context of "+relativeClass);
         String fileName = path.getFileName().toString().toLowerCase();
-        System.out.println("FileName="+fileName);
         for(String ext : MIMEMAP.keySet()) {
             if(fileName.endsWith(ext)) return MIMEMAP.get(ext);
         }

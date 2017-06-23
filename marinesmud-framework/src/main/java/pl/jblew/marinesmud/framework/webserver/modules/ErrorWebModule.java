@@ -11,7 +11,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import pl.jblew.marinesmud.framework.webserver.WebModule;
+import pl.jblew.marinesmud.framework.webserver.HttpsSession;
 
 /**
  *
@@ -22,7 +22,7 @@ public class ErrorWebModule implements WebModule {
     }
 
     @Override
-    public String getResponse(Path url, FullHttpRequest req) {
+    public String getResponse(Path url, FullHttpRequest req, HttpsSession session) {
         return "Error: "+url;
     }
     

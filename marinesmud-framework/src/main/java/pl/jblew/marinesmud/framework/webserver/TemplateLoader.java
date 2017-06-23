@@ -35,7 +35,7 @@ public final class TemplateLoader {
             try {
                 URL templateUrl = relative.getResource(name + ".html");
                 if (templateUrl == null) {
-                    throw new RuntimeException("Could not find " + templateUrl);
+                    return "Could not find template "+name+" (relative="+relative+")";
                 }
                 template = Resources.toString(templateUrl, Charset.forName("UTF-8"));
                 if(template != null && !template.isEmpty()) TEMPLATES.put(name, template);

@@ -25,6 +25,7 @@ import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaders.Names.COOKIE;
+import static io.netty.handler.codec.http.HttpHeaders.Names.SET_COOKIE;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.ssl.SslHandler;
@@ -33,7 +34,10 @@ import static io.netty.handler.codec.http.HttpUtil.*;
 import static io.netty.handler.codec.http.HttpMethod.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
-import pl.jblew.marinesmud.framework.webserver.HttpsUser;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
+import pl.jblew.marinesmud.framework.util.TwoTuple;
+import pl.jblew.marinesmud.framework.webserver.HttpsSession;
 import pl.jblew.marinesmud.framework.webserver.HttpsUsersManager;
 
 /**
@@ -88,9 +92,12 @@ class WebSocketServerProtocolHandshakeHandler extends ChannelInboundHandlerAdapt
                 WebSocketServerHandshakerFactory.sendUnsupportedVersionResponse(ctx.channel());
             } else {
                 final DefaultHttpHeaders httpHeaders = new DefaultHttpHeaders();
-                HttpsUser user = usersManager.parseCookies(req.headers().get(COOKIE), httpHeaders);
-                user.setWebSocketChannel(ctx.channel());
-
+                TwoTuple<HttpsSession, Cookie> resp = usersManager.parseCookies(req.headers().get(COOKIE));
+                HttpsSession session = resp.a;
+                Cookie newCookie = resp.b;
+                session.setWebSocketChannel(ctx.channel());
+                httpHeaders.add(SET_COOKIE, ServerCookieEncoder.STRICT.encode(newCookie));
+                
                 final ChannelFuture handshakeFuture = handshaker.handshake(ctx.channel(), req, httpHeaders, ctx.channel().newPromise());
 
                 handshakeFuture.addListener(new ChannelFutureListener() {

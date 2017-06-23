@@ -61,9 +61,12 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.CharsetUtil;
 import pl.jblew.marinesmud.framework.event.ListenersManager;
+import pl.jblew.marinesmud.framework.util.TwoTuple;
 
 /**
  *
@@ -76,11 +79,17 @@ public class HttpsServer {
     private final RoutingHttpResponder responder;
     private final StaticFileLoader fileLoader;
     private final WebServerConfig config;
+    private final SimpleChannelInboundHandler<WebSocketFrame> webSocketFrameHandler;
 
     public HttpsServer(WebServerConfig config, RoutingHttpResponder responder, StaticFileLoader fileLoader) {
+        this(config, responder, fileLoader, null);
+    }
+    
+    public HttpsServer(WebServerConfig config, RoutingHttpResponder responder, StaticFileLoader fileLoader, SimpleChannelInboundHandler<WebSocketFrame> webSocketFrameHandler) {
         this.responder = responder;
         this.config = config;
         this.fileLoader = fileLoader;
+        this.webSocketFrameHandler = webSocketFrameHandler;
         
         usersManager = new HttpsUsersManager(config);
 
@@ -138,9 +147,9 @@ public class HttpsServer {
             }
             p.addLast(new HttpServerCodec());
             p.addLast(new HttpObjectAggregator(65536));
-            p.addLast(new WebSocketServerProtocolHandler(usersManager, "/websocket", null, true));
+            if(HttpsServer.this.webSocketFrameHandler != null) p.addLast(new WebSocketServerProtocolHandler(usersManager, "/websocket", null, true));
             p.addLast(new HttpServerHandler());
-            p.addLast(new WebSocketFrameHandler());
+            if(HttpsServer.this.webSocketFrameHandler != null) p.addLast(HttpsServer.this.webSocketFrameHandler);
             
 
             /*
@@ -166,14 +175,16 @@ public class HttpsServer {
                 String mimeType = "text/html";
                 byte[] responseBytes;
                 Path path = Paths.get(req.getUri().replace("..", ""));
-
+                TwoTuple<HttpsSession, Cookie> resp = usersManager.parseCookies(req.headers().get(COOKIE));
+                HttpsSession session = resp.a;
+                Cookie newCookie = resp.b;
+                
                 if (fileLoader != null && path.getNameCount() > 1 && path.getName(0).toString().toLowerCase().equals("static")) { //static files
                     Path p = path.subpath(1, path.getNameCount());
                     responseBytes = fileLoader.loadFile(p);
                     mimeType = fileLoader.getMime(p);
-                    System.out.println("Mime: " + mimeType);
                 } else { //dynamic files
-                    responseBytes = responder.getResponse(path, req).getBytes("UTF-8");
+                    responseBytes = responder.getResponse(path, req, session).getBytes("UTF-8");
                 }
 
                 if (HttpHeaders.is100ContinueExpected(req)) {
@@ -182,9 +193,8 @@ public class HttpsServer {
                 boolean keepAlive = HttpHeaders.isKeepAlive(req);
                 FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(responseBytes));
                 response.headers().set(CONTENT_TYPE, (mimeType == null? "text/plain" : mimeType));
-                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
-
-                HttpsUser user = usersManager.parseCookies(req.headers().get(COOKIE), response.headers());
+                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());                
+                response.headers().add(SET_COOKIE, ServerCookieEncoder.STRICT.encode(newCookie));
                 
                 if (!keepAlive) {
                     ctx.write(response).addListener(ChannelFutureListener.CLOSE);
@@ -198,35 +208,6 @@ public class HttpsServer {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             cause.printStackTrace();
             ctx.close();
-        }
-    }
-
-    private static class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame>{
-        public WebSocketFrameHandler() {
-        }
-
-        @Override
-        protected void channelRead0(ChannelHandlerContext ctx, WebSocketFrame frame) throws Exception {
-            // ping and pong frames already handled
-
-            if (frame instanceof TextWebSocketFrame) {
-                // Send the uppercase string back.
-                String request = ((TextWebSocketFrame) frame).text();
-                
-                String lastMSg = "---";
-                
-                HttpsUser user = ctx.channel().attr(HttpsUser.WSCHANNEL_USER_ATTR).get();
-                if(user != null) {
-                    lastMSg = (String) user.getProperty("lastMsg");
-                    user.setProperty("lastMsg", request);
-                }
-                
-                Logger.getLogger(HttpsServer.class.getName()).log(Level.INFO, "{0} received {1}", new Object[]{ctx.channel(), request});
-                ctx.channel().writeAndFlush(new TextWebSocketFrame(request.toUpperCase()+"; lastMSg="+lastMSg));
-            } else {
-                String message = "unsupported frame type: " + frame.getClass().getName();
-                throw new UnsupportedOperationException(message);
-            }
         }
     }
 }

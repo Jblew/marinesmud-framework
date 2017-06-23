@@ -14,5 +14,5 @@ public class WebServerConfig {
     public int httpsPort = 8443;
     public String domain = "127.0.0.1";
     public String cookieName = "#random";
-    long cookiesTimeousS = 15*24*60*60; //15 days
+    public long cookiesTimeousS = 8*60*60; //8 hours
 }

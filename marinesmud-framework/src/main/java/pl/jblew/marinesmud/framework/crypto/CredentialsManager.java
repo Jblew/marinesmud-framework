@@ -6,6 +6,7 @@
 package pl.jblew.marinesmud.framework.crypto;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -20,10 +21,10 @@ public class CredentialsManager<U> {
     private final long minimalLoginIntervalMs = 1500;//ms
     private final Map<String, CredentialEntry> credentials = new HashMap<>();
     private final Object sync = new Object();
-    
-    public CredentialsManager(UserEntry<U> [] users) {
-        for(UserEntry<U> ue : users) {
-            synchronized(sync) {
+
+    public CredentialsManager(List<UserEntry<U>> users) {
+        for (UserEntry<U> ue : users) {
+            synchronized (sync) {
                 credentials.put(ue.username, new CredentialEntry(ue.username, ue.hash, ue.userObject));
             }
         }
@@ -36,8 +37,9 @@ public class CredentialsManager<U> {
                     CredentialEntry ce = credentials.get(username);
                     if (ce.verify(password)) {
                         return ce.userObject;
+                    } else {
+                        return null;
                     }
-                    else return null;
                 } catch (PasswordStorage.CannotPerformOperationException ex) {
                     Logger.getLogger(CredentialsManager.class.getName()).log(Level.SEVERE, null, ex);
                     return null;
@@ -50,11 +52,19 @@ public class CredentialsManager<U> {
             }
         }
     }
-    
+
     public String generateHash(String password) {
         try {
             return PasswordStorage.createHash(password);
         } catch (PasswordStorage.CannotPerformOperationException ex) {
+            throw new CryptographyException(password);
+        }
+    }
+
+    public boolean verifyHash(String password, String hash) {
+        try {
+            return PasswordStorage.verifyPassword(password, hash);
+        } catch (PasswordStorage.CannotPerformOperationException | PasswordStorage.InvalidHashException ex) {
             throw new CryptographyException(password);
         }
     }
@@ -88,7 +98,7 @@ public class CredentialsManager<U> {
             lastTryTimestamp = System.currentTimeMillis();
         }
     }
-    
+
     public static class UserEntry<UU> {
         public String username;
         public String hash;

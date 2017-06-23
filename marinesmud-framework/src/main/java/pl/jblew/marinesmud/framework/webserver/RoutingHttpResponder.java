@@ -5,6 +5,7 @@
  */
 package pl.jblew.marinesmud.framework.webserver;
 
+import pl.jblew.marinesmud.framework.webserver.modules.WebModule;
 import com.google.common.io.Resources;
 import io.netty.handler.codec.http.FullHttpRequest;
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class RoutingHttpResponder {
 
     }
 
-    public String getResponse(Path path, FullHttpRequest req) {
+    public String getResponse(Path path, FullHttpRequest req, HttpsSession session) {
         String moduleName = (path.getNameCount() == 0 ? "index" : path.getName(0).toString());
         WebModule module = modules.get(moduleName);
 
@@ -40,7 +41,7 @@ public class RoutingHttpResponder {
         }
 
         try {
-            return module.getResponse((path.getNameCount() == 0? Paths.get("/") : path.subpath((path.getNameCount() > 1? 1 : 0), path.getNameCount())), req);
+            return module.getResponse((path.getNameCount() == 0? Paths.get("/") : path.subpath((path.getNameCount() > 1? 1 : 0), path.getNameCount())), req, session);
         } catch (Exception ex) {
             Logger.getLogger(RoutingHttpResponder.class.getName()).log(Level.SEVERE, null, ex);
             return ex + "";
