@@ -50,7 +50,7 @@ public class HttpsUsersManager {
             Set<Cookie> cookies = ServerCookieDecoder.LAX.decode(cookieHeader);
             for (Cookie c : cookies) {
                 if (c.name() != null && c.name().equals(cookieName)) {
-                    if ((c.domain() == null || c.domain().equals(config.domain))) {
+                    if ((c.domain() == null || c.domain().equals(config.cookieDomain))) {
                         if (sessions.containsKey(c.value())) {
                             cookie = c;
                             break;
@@ -74,7 +74,7 @@ public class HttpsUsersManager {
             session.touch();
 
             Cookie newCookie = new DefaultCookie(cookieName, cookieValue);
-            newCookie.setDomain(config.domain);
+            newCookie.setDomain(config.cookieDomain);
             newCookie.setHttpOnly(true);
             newCookie.setMaxAge(config.cookiesTimeousS);
             newCookie.setSecure(true);

@@ -12,7 +12,9 @@ package pl.jblew.marinesmud.framework.webserver;
 public class WebServerConfig {
     public int httpPort = 8080;
     public int httpsPort = 8443;
-    public String domain = "127.0.0.1";
+    public String listenDomain = "127.0.0.1";
+    public String cookieDomain = "127.0.0.1";
+    public String externalDomain = "127.0.0.1";
     public String cookieName = "#random";
     public long cookiesTimeousS = 8*60*60; //8 hours
 }

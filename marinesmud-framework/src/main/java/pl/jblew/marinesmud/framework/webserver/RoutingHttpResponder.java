@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.marinesmud.framework.webserver.modules.ErrorWebModule;
+import pl.jblew.marinesmud.framework.webserver.modules.HttpErrorCodeException;
 
 /**
  *
@@ -32,7 +33,7 @@ public class RoutingHttpResponder {
 
     }
 
-    public String getResponse(Path path, FullHttpRequest req, HttpsSession session) {
+    public byte [] getResponse(Path path, FullHttpRequest req, HttpsSession session) throws HttpErrorCodeException {
         String moduleName = (path.getNameCount() == 0 ? "index" : path.getName(0).toString());
         WebModule module = modules.get(moduleName);
 
@@ -40,11 +41,7 @@ public class RoutingHttpResponder {
             module = errorModule;
         }
 
-        try {
-            return module.getResponse((path.getNameCount() == 0? Paths.get("/") : path.subpath((path.getNameCount() > 1? 1 : 0), path.getNameCount())), req, session);
-        } catch (Exception ex) {
-            Logger.getLogger(RoutingHttpResponder.class.getName()).log(Level.SEVERE, null, ex);
-            return ex + "";
-        }
+        return module.getResponse((path.getNameCount() == 0? Paths.get("/") : path.subpath((path.getNameCount() > 1? 1 : 0), path.getNameCount())), req, session);
+        
     }
 }

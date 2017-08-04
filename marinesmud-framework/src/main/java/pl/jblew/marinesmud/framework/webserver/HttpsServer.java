@@ -61,12 +61,14 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.CharsetUtil;
 import pl.jblew.marinesmud.framework.event.ListenersManager;
 import pl.jblew.marinesmud.framework.util.TwoTuple;
+import pl.jblew.marinesmud.framework.webserver.modules.HttpErrorCodeException;
 
 /**
  *
@@ -80,7 +82,7 @@ public class HttpsServer {
     private final StaticFileLoader fileLoader;
     private final WebServerConfig config;
     private final SimpleChannelInboundHandler<WebSocketFrame> webSocketFrameHandler;
-
+    
     public HttpsServer(WebServerConfig config, RoutingHttpResponder responder, StaticFileLoader fileLoader) {
         this(config, responder, fileLoader, null);
     }
@@ -92,7 +94,7 @@ public class HttpsServer {
         this.webSocketFrameHandler = webSocketFrameHandler;
         
         usersManager = new HttpsUsersManager(config);
-
+        
         SslContext sslContext = loadSSLContext(config);
 
         // Configure the server.
@@ -103,21 +105,21 @@ public class HttpsServer {
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.ERROR))
                     .childHandler(new HttpServerInitializer(sslContext));
-
+            
             Channel ch = b.bind(config.httpsPort).sync().channel();
-
+            
         } catch (InterruptedException ex) {
             Logger.getLogger(HttpsServer.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
-
+            
         }
     }
-
+    
     public void stop() {
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
     }
-
+    
     private SslContext loadSSLContext(WebServerConfig config) {
         try {
             SelfSignedCertificate ssc = new SelfSignedCertificate();
@@ -131,14 +133,14 @@ public class HttpsServer {
             throw new RuntimeException(ex);
         }
     }
-
+    
     private class HttpServerInitializer extends ChannelInitializer<SocketChannel> {
         private final SslContext sslCtx;
-
+        
         public HttpServerInitializer(SslContext sslCtx) {
             this.sslCtx = sslCtx;
         }
-
+        
         @Override
         public void initChannel(SocketChannel ch) {
             ChannelPipeline p = ch.pipeline();
@@ -147,10 +149,14 @@ public class HttpsServer {
             }
             p.addLast(new HttpServerCodec());
             p.addLast(new HttpObjectAggregator(65536));
-            if(HttpsServer.this.webSocketFrameHandler != null) p.addLast(new WebSocketServerProtocolHandler(usersManager, "/websocket", null, true));
+            if (HttpsServer.this.webSocketFrameHandler != null) {
+                p.addLast(new WebSocketServerProtocolHandler(usersManager, "/websocket", null, true));
+            }
             p.addLast(new HttpServerHandler());
-            if(HttpsServer.this.webSocketFrameHandler != null) p.addLast(HttpsServer.this.webSocketFrameHandler);
-            
+            if (HttpsServer.this.webSocketFrameHandler != null) {
+                p.addLast(HttpsServer.this.webSocketFrameHandler);
+            }
+
 
             /*
             From file server handler: 
@@ -163,15 +169,22 @@ public class HttpsServer {
              */
         }
     }
-
+    
     private class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         @Override
         public void channelReadComplete(ChannelHandlerContext ctx) {
             ctx.flush();
         }
-
+        
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
+            FullHttpResponse response;
+            if (HttpHeaders.is100ContinueExpected(req)) {
+                ctx.write(new DefaultFullHttpResponse(HTTP_1_1, CONTINUE));
+            }
+            boolean keepAlive = HttpHeaders.isKeepAlive(req);
+            
+            try {
                 String mimeType = "text/html";
                 byte[] responseBytes;
                 Path path = Paths.get(req.getUri().replace("..", ""));
@@ -184,28 +197,30 @@ public class HttpsServer {
                     responseBytes = fileLoader.loadFile(p);
                     mimeType = fileLoader.getMime(p);
                 } else { //dynamic files
-                    responseBytes = responder.getResponse(path, req, session).getBytes("UTF-8");
+                    responseBytes = responder.getResponse(path, req, session);
                 }
-
-                if (HttpHeaders.is100ContinueExpected(req)) {
-                    ctx.write(new DefaultFullHttpResponse(HTTP_1_1, CONTINUE));
-                }
-                boolean keepAlive = HttpHeaders.isKeepAlive(req);
-                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(responseBytes));
-                response.headers().set(CONTENT_TYPE, (mimeType == null? "text/plain" : mimeType));
+                
+                response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(responseBytes));
+                response.headers().set(CONTENT_TYPE, (mimeType == null ? "text/plain" : mimeType));
                 response.headers().set(CONTENT_LENGTH, response.content().readableBytes());                
                 response.headers().add(SET_COOKIE, ServerCookieEncoder.STRICT.encode(newCookie));
-                
-                if (!keepAlive) {
-                    ctx.write(response).addListener(ChannelFutureListener.CLOSE);
-                } else {
-                    response.headers().set(CONNECTION, Values.KEEP_ALIVE);
-                    ctx.write(response);
-                }
+            } catch (HttpErrorCodeException ex) {
+                System.out.println("Caught http error code exception: "+ex.httpCode);
+                byte[] content = ("Error: " + ex.toString()).getBytes();
+                response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.valueOf(ex.httpCode), Unpooled.wrappedBuffer(content));
+                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());                
+            }
+            if (!keepAlive) {
+                ctx.write(response).addListener(ChannelFutureListener.CLOSE);
+            } else {
+                response.headers().set(CONNECTION, Values.KEEP_ALIVE);
+                ctx.write(response);
+            }
         }
-
+        
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            System.out.println("Exception caught: "+cause.toString());
             cause.printStackTrace();
             ctx.close();
         }

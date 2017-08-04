@@ -5,6 +5,7 @@
  */
 package pl.jblew.marinesmud.framework.webserver.websockets;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -24,7 +25,7 @@ public abstract class WebSocketFrameHandler extends SimpleChannelInboundHandler<
         public WebSocketFrameHandler() {
         }
         
-        public abstract void processText(HttpsSession session, String text);
+        public abstract void processText(HttpsSession session, Channel channel, String text);
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, WebSocketFrame frame) throws Exception {
@@ -34,7 +35,7 @@ public abstract class WebSocketFrameHandler extends SimpleChannelInboundHandler<
                 String text = ((TextWebSocketFrame) frame).text();                
                 HttpsSession session = ctx.channel().attr(HttpsSession.WSCHANNEL_SESSION_ATTR).get();
                 if(session != null) {
-                    processText(session, text);
+                    processText(session, ctx.channel(), text);
                 }
                 else Logger.getLogger(HttpsServer.class.getName()).log(Level.SEVERE, "Session is null in WebSocketFrame!");
             } else {

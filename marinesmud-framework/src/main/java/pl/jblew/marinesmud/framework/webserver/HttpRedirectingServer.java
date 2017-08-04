@@ -96,13 +96,13 @@ public class HttpRedirectingServer {
             if (msg instanceof HttpRequest) {
                 HttpRequest req = (HttpRequest) msg;
                 
-                String movedUrl = "https://"+config.domain+":"+config.httpsPort+"/";
+                String movedUrl = "https://"+config.externalDomain+":"+config.httpsPort+"/";
 
                 if (HttpHeaders.is100ContinueExpected(req)) {
                     ctx.write(new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.MOVED_PERMANENTLY));
                 }
                 boolean keepAlive = HttpHeaders.isKeepAlive(req);
-                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.MOVED_PERMANENTLY, Unpooled.wrappedBuffer(new byte [] {}));
+                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.FOUND, Unpooled.wrappedBuffer(new byte [] {}));
                 response.headers().set(HttpHeaders.Names.LOCATION, movedUrl);
 
                 if (!keepAlive) {

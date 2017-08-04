@@ -14,5 +14,5 @@ import pl.jblew.marinesmud.framework.webserver.HttpsSession;
  * @author teofil
  */
 public interface WebModule {
-    public String getResponse(Path subpath, FullHttpRequest req, HttpsSession session);
+    public byte [] getResponse(Path subpath, FullHttpRequest req, HttpsSession session) throws HttpErrorCodeException;
 }

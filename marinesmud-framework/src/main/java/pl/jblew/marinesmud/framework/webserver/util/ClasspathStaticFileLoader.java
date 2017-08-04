@@ -6,6 +6,7 @@
 package pl.jblew.marinesmud.framework.webserver.util;
 
 import com.google.common.io.Resources;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -44,7 +45,9 @@ public class ClasspathStaticFileLoader implements StaticFileLoader {
         if(mime == null) return "403 Forbidden".getBytes();
         
         try {
-            return Resources.toByteArray(relativeClass.getResource(path.toString()));
+            URL res = relativeClass.getResource(path.toString());
+            if(res == null) return "404 Not Found".getBytes();
+            return Resources.toByteArray(res);
         } catch (Exception ex) {
             Logger.getLogger(ClasspathStaticFileLoader.class.getName()).log(Level.SEVERE, null, ex);
             return ex.toString().getBytes(StandardCharsets.UTF_8);

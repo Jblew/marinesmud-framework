@@ -28,12 +28,16 @@ public final class TemplateLoader {
     }
     
     public String getOrLoadTemplate(String name) {
+        return this.getOrLoadTemplate(name, "html");
+    }
+    
+    public String getOrLoadTemplate(String name, String extension) {
         String template = TEMPLATES.get(name);
         if (template != null) {
             return template;
         } else {
             try {
-                URL templateUrl = relative.getResource(name + ".html");
+                URL templateUrl = relative.getResource(name + "."+extension);
                 if (templateUrl == null) {
                     return "Could not find template "+name+" (relative="+relative+")";
                 }

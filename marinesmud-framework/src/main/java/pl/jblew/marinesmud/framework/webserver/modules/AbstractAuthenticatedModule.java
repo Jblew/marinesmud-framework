@@ -37,9 +37,9 @@ public abstract class AbstractAuthenticatedModule<U> extends AbstractModule {
 
     public abstract boolean checkAccess(Path subpath, FullHttpRequest req, U user);
 
-    public abstract String getResponse(Path subpath, FullHttpRequest req, HttpsSession session, U user);
+    public abstract byte[] getResponse(Path subpath, FullHttpRequest req, HttpsSession session, U user) throws HttpErrorCodeException;
 
-    public String loginPage(FullHttpRequest req, HttpsSession session) {
+    public byte[] loginPage(FullHttpRequest req, HttpsSession session) {
         try {
         return render("Auth", "<form method=\"POST\" class=\"auth-form\">"
                 + "      <input type=\"text\" name=\"username\" placeholder=\"User name\" required=\"\" autofocus=\"\" />"
@@ -58,7 +58,7 @@ public abstract class AbstractAuthenticatedModule<U> extends AbstractModule {
     }
 
     @Override
-    public String getResponse(Path subpath, FullHttpRequest req, HttpsSession session) {
+    public byte [] getResponse(Path subpath, FullHttpRequest req, HttpsSession session) throws HttpErrorCodeException {
         tryLogin(req, session);
 
         U userObj = (U) session.getProperty(USER_OBJ_PROPERTY);
@@ -69,7 +69,7 @@ public abstract class AbstractAuthenticatedModule<U> extends AbstractModule {
             else if (checkAccess(subpath, req, userObj)) {
                 return getResponse(subpath, req, session, userObj);
             } else {
-                return render("403 Forbidden", "403 Forbidden");
+                throw new HttpErrorCodeException(403);
             }
         } else {
             System.out.println("loginPage");

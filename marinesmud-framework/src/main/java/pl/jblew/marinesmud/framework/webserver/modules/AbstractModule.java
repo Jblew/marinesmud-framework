@@ -19,7 +19,7 @@ public abstract class AbstractModule implements WebModule {
         templateLoader = new TemplateLoader(templateContext);
     }
     
-    public String render(String title, String body) {
-        return templateLoader.getOrLoadTemplate("main").replace("{{title}}", title).replace("{{body}}", body);
+    public byte[] render(String title, String body) {
+        return templateLoader.getOrLoadTemplate("main").replace("{{title}}", title).replace("{{body}}", body).getBytes();
     }
 }

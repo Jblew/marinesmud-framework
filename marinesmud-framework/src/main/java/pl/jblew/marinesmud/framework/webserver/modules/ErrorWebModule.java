@@ -22,8 +22,8 @@ public class ErrorWebModule implements WebModule {
     }
 
     @Override
-    public String getResponse(Path url, FullHttpRequest req, HttpsSession session) {
-        return "Error: "+url;
+    public byte [] getResponse(Path url, FullHttpRequest req, HttpsSession session) {
+        return ("Error: "+url).getBytes();
     }
     
 }

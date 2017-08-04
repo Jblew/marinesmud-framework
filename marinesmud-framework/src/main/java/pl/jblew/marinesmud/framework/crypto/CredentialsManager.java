@@ -103,5 +103,15 @@ public class CredentialsManager<U> {
         public String username;
         public String hash;
         public UU userObject;
+        
+        public UserEntry() {
+            
+        }
+        
+        public UserEntry(String username, String password, UU userObject) throws PasswordStorage.CannotPerformOperationException {
+            this.username = username;
+            this.userObject = userObject;
+            this.hash = PasswordStorage.createHash(password);
+        }
     }
 }
