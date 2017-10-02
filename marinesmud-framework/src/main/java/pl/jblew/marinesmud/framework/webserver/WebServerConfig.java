@@ -18,6 +18,7 @@ public class WebServerConfig {
     public String cookieName = "#random";
     public long cookiesTimeousS = 8*60*60; //8 hours
     public boolean useTemporarySelfSignedCertificate = true;
-    public String sslPubKeyFile = null;
-    public String sslPrivateKeyFile = null;
+    public String sslCertPemFile = null;
+    public String sslKeyPemFile = null;
+    public String sslPassword = null;
 }

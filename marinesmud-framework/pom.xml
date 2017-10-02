@@ -4,7 +4,7 @@
 
     <groupId>pl.jblew.marinesmud.framework</groupId>
     <artifactId>marinesmud-framework</artifactId>
-    <version>1.0.19</version>
+    <version>1.0.20</version>
     <packaging>jar</packaging>
 
     <name>marinesmud-framework</name>

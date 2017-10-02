@@ -9,7 +9,6 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -17,31 +16,17 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpRequest;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
 import static io.netty.handler.codec.http.HttpHeaders.Values;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
-import pl.jblew.marinesmud.framework.mod.io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import pl.jblew.marinesmud.framework.mod.io.netty.handler.codec.http.websocketx.WebSocketFrame;
-import pl.jblew.marinesmud.framework.mod.io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
-import pl.jblew.marinesmud.framework.mod.io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import pl.jblew.marinesmud.framework.mod.io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
-import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateException;
@@ -49,9 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.net.ssl.SSLException;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
@@ -60,14 +43,10 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
-import io.netty.handler.ssl.SslHandler;
-import io.netty.util.CharsetUtil;
 import java.io.File;
-import pl.jblew.marinesmud.framework.event.ListenersManager;
 import pl.jblew.marinesmud.framework.util.TwoTuple;
 import pl.jblew.marinesmud.framework.webserver.modules.HttpErrorCodeException;
 
@@ -129,10 +108,15 @@ public class HttpsServer {
                 sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
             }
             else {
-                if(config.sslPubKeyFile == null || config.sslPrivateKeyFile == null) throw new RuntimeException("SSL key files cannot be null when WebServerConfig.useTemporarySelfSignedCertificate=false");
-                if(!new File(config.sslPubKeyFile).canRead()|| !new File(config.sslPrivateKeyFile).canRead()) throw new RuntimeException("SSL key files must exist and be readable when WebServerConfig.useTemporarySelfSignedCertificate=false");
+                if(config.sslCertPemFile == null || config.sslKeyPemFile == null) throw new RuntimeException("SSL key files cannot be null when WebServerConfig.useTemporarySelfSignedCertificate=false");
+                if(!new File(config.sslCertPemFile).canRead()|| !new File(config.sslKeyPemFile).canRead()) throw new RuntimeException("SSL key files must exist and be readable when WebServerConfig.useTemporarySelfSignedCertificate=false");
                 
-                sslCtx = SslContextBuilder.forServer(new File(config.sslPubKeyFile), new File(config.sslPrivateKeyFile)).build();
+                if(config.sslPassword == null) {
+                    sslCtx = SslContextBuilder.forServer(new File(config.sslCertPemFile), new File(config.sslKeyPemFile)).build();
+                }
+                else {
+                    sslCtx = SslContextBuilder.forServer(new File(config.sslCertPemFile), new File(config.sslKeyPemFile), config.sslPassword).build();
+                }
             }
             return sslCtx;
         } catch (CertificateException ex) {
