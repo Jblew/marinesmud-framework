@@ -8,13 +8,14 @@ package pl.jblew.marinesmud.framework.webserver;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import pl.jblew.marinesmud.framework.services.Service;
 import pl.jblew.marinesmud.framework.webserver.websockets.WebSocketFrameHandler;
 
 /**
  *
  * @author teofil
  */
-public class WebServer {
+public class WebServer implements Service {
     private final WebServerConfig config;
     private final RoutingHttpResponder router;
     private final StaticFileLoader fileLoader;

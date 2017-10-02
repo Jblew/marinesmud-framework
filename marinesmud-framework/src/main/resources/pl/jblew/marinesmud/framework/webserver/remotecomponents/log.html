@@ -1,0 +1,13 @@
+<div class="log-component log-component-{{id}}" id="{{uid}}">
+    {{entries}}
+</div>
+
+<script>
+    $(document).ready(function() {
+        window.channel.on('{{logEventClass}}', function(data) {
+            if(data.id === "{{id}}") {
+                $("#{{uid}}").append("<div class=\"log-component-item\"><span class=\"log-component-time\">"+data.time+"</span> "+data.msg+"</div>");
+            }
+        });
+    });
+</script>

@@ -17,4 +17,7 @@ public class WebServerConfig {
     public String externalDomain = "127.0.0.1";
     public String cookieName = "#random";
     public long cookiesTimeousS = 8*60*60; //8 hours
+    public boolean useTemporarySelfSignedCertificate = true;
+    public String sslPubKeyFile = null;
+    public String sslPrivateKeyFile = null;
 }

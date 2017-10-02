@@ -66,6 +66,7 @@ import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.CharsetUtil;
+import java.io.File;
 import pl.jblew.marinesmud.framework.event.ListenersManager;
 import pl.jblew.marinesmud.framework.util.TwoTuple;
 import pl.jblew.marinesmud.framework.webserver.modules.HttpErrorCodeException;
@@ -122,8 +123,17 @@ public class HttpsServer {
     
     private SslContext loadSSLContext(WebServerConfig config) {
         try {
-            SelfSignedCertificate ssc = new SelfSignedCertificate();
-            SslContext sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+            SslContext sslCtx;
+            if(config.useTemporarySelfSignedCertificate) {
+                SelfSignedCertificate ssc = new SelfSignedCertificate();
+                sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+            }
+            else {
+                if(config.sslPubKeyFile == null || config.sslPrivateKeyFile == null) throw new RuntimeException("SSL key files cannot be null when WebServerConfig.useTemporarySelfSignedCertificate=false");
+                if(!new File(config.sslPubKeyFile).canRead()|| !new File(config.sslPrivateKeyFile).canRead()) throw new RuntimeException("SSL key files must exist and be readable when WebServerConfig.useTemporarySelfSignedCertificate=false");
+                
+                sslCtx = SslContextBuilder.forServer(new File(config.sslPubKeyFile), new File(config.sslPrivateKeyFile)).build();
+            }
             return sslCtx;
         } catch (CertificateException ex) {
             Logger.getLogger(HttpsServer.class.getName()).log(Level.SEVERE, null, ex);
