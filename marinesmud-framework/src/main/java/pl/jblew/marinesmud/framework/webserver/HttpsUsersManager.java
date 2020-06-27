@@ -50,7 +50,7 @@ public class HttpsUsersManager {
             Set<Cookie> cookies = ServerCookieDecoder.LAX.decode(cookieHeader);
             for (Cookie c : cookies) {
                 if (c.name() != null && c.name().equals(cookieName)) {
-                    if ((c.domain() == null || c.domain().equals(config.cookieDomain))) {
+                    if ((c.domain() == null || config.cookieDomain == null || c.domain().equals(config.cookieDomain))) {
                         if (sessions.containsKey(c.value())) {
                             cookie = c;
                             break;

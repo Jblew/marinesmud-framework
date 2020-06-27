@@ -14,12 +14,23 @@ import pl.jblew.marinesmud.framework.webserver.modules.WebModule;
  */
 public abstract class AbstractModule implements WebModule {
     public final TemplateLoader templateLoader;
+    public final String defaultTemplate;
     
     public AbstractModule(Class<?> templateContext) {
         templateLoader = new TemplateLoader(templateContext);
+         defaultTemplate = "main";
+    }
+    
+    public AbstractModule(Class<?> templateContext, String defaultTemplate) {
+        templateLoader = new TemplateLoader(templateContext);
+        this.defaultTemplate = defaultTemplate;
     }
     
     public byte[] render(String title, String body) {
-        return templateLoader.getOrLoadTemplate("main").replace("{{title}}", title).replace("{{body}}", body).getBytes();
+        return templateLoader.getOrLoadTemplate(defaultTemplate).replace("{{title}}", title).replace("{{body}}", body).getBytes();
+    }
+    
+    public byte[] render(String templateName, String title, String body) {
+        return templateLoader.getOrLoadTemplate(templateName).replace("{{title}}", title).replace("{{body}}", body).getBytes();
     }
 }
